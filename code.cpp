@@ -39,20 +39,23 @@ FILE *fp;
 
 int TLB_Hit, TLB_Miss, pageFault;
 
-vector<pair<int, int>> TLB(TLB_SIZE, make_pair(-1, -1));
+vector <pair<int, int>> TLB(TLB_SIZE, make_pair(-1, -1));
 vector<int> pageTable(PAGE_COUNT, -1);
-vector<map<int, int>> RAM(FRAME_ENTRIES); //mapsize
+vector <map<int, int>> RAM(FRAME_ENTRIES); //mapsize
 
 
-int readFromDisk(int pageNum, char *PM, int *OF);
+//int readFromDisk(int pageNum, int pageOffset);
+
 pair<int, int> getVirtPageNumAndPageOffset(ll virtAddress);
-int TLBSearch(int virtPageNum);
 
+int TLBSearch(int virtPageNum);
 
 
 int main() {
 
     //input
+
+//    cout << readFromDisk(118, 130) << endl;
 
     ll virtualAddress=30338;
     auto virtPageInfo = getVirtPageNumAndPageOffset(virtualAddress);
@@ -70,18 +73,18 @@ int main() {
             //read from disk
             //continue;
         }
-        
+
     }
 
     value = RAM[physicalPageNum][pageOffset];
 }
 
 
-pair<int, int> getVirtPageNumAndPageOffset(ll virtAddress){
+pair<int, int> getVirtPageNumAndPageOffset(ll virtAddress) {
     string virtAddressBin = "";
 
-    for(int i = 0; i < 16 ; i++){
-        if(1 << i & virtAddress) virtAddressBin += "1";
+    for (int i = 0; i < 16; i++) {
+        if (1 << i & virtAddress) virtAddressBin += "1";
         else virtAddressBin += "0";
     }
 
@@ -89,19 +92,18 @@ pair<int, int> getVirtPageNumAndPageOffset(ll virtAddress){
 
     int virtPageNumInt = 0, pageOffsetInt = 0;
 
-    for(int i = 0; i < 8; i++){
-        virtPageNumInt += (virtPageNumBin[i]=='1') * (1 << i);
+    for (int i = 0; i < 8; i++) {
+        virtPageNumInt += (virtPageNumBin[i] == '1') * (1 << i);
         pageOffsetInt += (pageOffsetBin[i] == '1') * (1 << i);
     }
 
-    return make_pair(virtPageNumInt,  pageOffsetInt);
+    return make_pair(virtPageNumInt, pageOffsetInt);
 }
 
 
+int TLBSearch(int virtPageNum) {
 
-int TLBSearch(int virtPageNum){
-
-    for(int i = 0; i < 16; i++){
+    for (int i = 0; i < 16; i++) {
         if (TLB[i].first == virtPageNum) {
             TLB_Hit++;
             return TLB[i].second;
@@ -112,42 +114,17 @@ int TLBSearch(int virtPageNum){
     return -1;
 }
 
-
-
-
-
-
-
-
-//НЕ РАБОТАЕТ НО ВСЕЖЕ
-
-//int readFromDisk(int pageNum, char *PM, int *OF) {
-//
-//    char buffer[BUFFER_SIZE];
-//    memset(buffer, 0, sizeof(buffer));
+//int readFromDisk(int pageNum, int pageOffset) {
 //
 //    fp = fopen(fileName, "rb");
 //    if (fp == NULL) {
-//        printf("Failed to open the file\n");
-//        exit(0);
+//        cout << "Failed to open the file" << endl;
+//        return 1;
 //    }
+//    int p;
+//    auto *value = &p;
+//    int idk = fseek(fp, pageNum * PAGE_SIZE + pageOffset, SEEK_SET);
+//    fread(value, 256, 1, fp);
 //
-////	printf("offset in fseek: %d\n", pageNum*PHYS_MEM_SIZE);
-//
-//    if (fseek(fp, pageNum * PHYSICAL_MEMORY_SIZE, SEEK_SET) != 0)
-//        printf("fseek error\n");
-//
-//    if (fread(buffer, sizeof(char), PHYSICAL_MEMORY_SIZE, fp) == 0)
-//        printf("fread error\n");
-//
-//    for (int i = 0; i < PHYSICAL_MEMORY_SIZE; i++) {
-//        *((PM + (*OF) * PHYSICAL_MEMORY_SIZE) + i) = buffer[i];
-//        printf("buffer[%d]=%d\n", i + pageNum * 256, buffer[i]);
-//    }
-//
-//    (*OF)++;
-//
-//    fclose(fp);
-//
-//    return (*OF) - 1;
+//    return *value;
 //}
