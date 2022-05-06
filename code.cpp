@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <algorithm>
 
 using namespace std;
 
@@ -17,9 +18,9 @@ using namespace std;
 
 typedef long long ll;
 
-char fileName[] = R"(\Users\GH\source\repos\VirtualMemory\disk_sim)";
-char inputName[] = R"(\Users\GH\source\repos\VirtualMemory\addresses.txt)";
-char outputName[] = R"(\Users\GH\source\repos\VirtualMemory\output.txt)";
+char fileName[] = R"(\Users\Ayan Hashimova\CLionProjects\VirtualMemoryManager\disk_sim)";
+char inputName[] = R"(\Users\Ayan Hashimova\CLionProjects\VirtualMemoryManager\addresses.txt)";
+char outputName[] = R"(\Users\Ayan Hashimova\CLionProjects\VirtualMemoryManager\output.txt)";
 
 int TLB_Hit, pageFault, RAMPageCounter;
 
@@ -39,19 +40,45 @@ void allocateInTLB(int virtPageNum, int physicalPageNum);
 
 void FIFO(int virtPageNum, int physicalPageNum);
 
-int toSignedConversion (int value);
+int toSignedConversion(int value);
 
+void AddressesAndValueOutputFormat(ll virtualAddress, ll physicalAddress, int value);
+
+void startOfFileFormat(string replacementAlgorithm);
+
+void endOfFileFormat(int TLB_Hit, int pageFault, ll count);
 
 int main() {
 
+    string replacementAlgorithm;
+    cout << "Enter replacement algorithm: ";
+    cin >> replacementAlgorithm;
+
+    transform(replacementAlgorithm.begin(), replacementAlgorithm.end(), replacementAlgorithm.begin(), ::toupper);
+    if (replacementAlgorithm != "FIFO" && replacementAlgorithm != "LRU") {
+        return -1;
+    }
+
     RAMInit();
 
-    freopen(inputName, "r", stdin);
-    freopen(outputName, "w", stdout);
+    FILE *input = freopen(inputName, "r", stdin);
+    if (input == NULL) {
+        cout << "Failed to open the file" << endl;
+        return -1;
+    }
 
-    ll virtualAddress;
-    while (cin >> virtualAddress){
+    FILE *output = freopen(outputName, "w", stdout);
+    if (output == NULL) {
+        cout << "Failed to open the file" << endl;
+        return -1;
+    }
 
+    startOfFileFormat(replacementAlgorithm);
+
+    ll virtualAddress, count = 0;
+    while (cin >> virtualAddress) {
+
+        count++;
         int virtPageNum = virtualAddress / PAGE_SIZE, pageOffset = virtualAddress % PAGE_SIZE;
 
         int physicalPageNum = TLBSearch(virtPageNum);
@@ -62,12 +89,7 @@ int main() {
             if (physicalPageNum == -1) {
                 pageFault++;
                 physicalPageNum = readFromDisk(virtPageNum, pageOffset);
-
-                //if file failed to open
-                if (physicalPageNum == -1){
-                    return 0;
-                }
-            } 
+            }
 
             allocateInTLB(virtPageNum, physicalPageNum);
         }
@@ -75,10 +97,33 @@ int main() {
         int physicalAddress = physicalPageNum * FRAME_SIZE + pageOffset;
         int value = RAM[physicalPageNum][pageOffset];
 
-        cout << virtualAddress << " " << physicalAddress << " " << value << endl;
+        AddressesAndValueOutputFormat(virtualAddress, physicalAddress, value);
     }
 
-    cout << TLB_Hit * 100.0 / 3000 << "%" << endl << pageFault * 100.0 / 3000 << "%" << endl;
+    endOfFileFormat(TLB_Hit, pageFault, count);
+}
+
+void startOfFileFormat(string replacementAlgorithm) {
+    cout << "Welcome to Team 1's Virtual Memory Simulator!\n\nSystem parameters:\n\n" <<
+         "Program address space: 16-bit\nPage size: 2^8 bytes\nTLB capacity: 16 entries\n" <<
+         "Number of frames: 256\nPhysical memory size: 64 KB\nReplacement algorithm: " << replacementAlgorithm << endl
+         << endl;
+
+    cout << "----------------------------------------------------------------------------------\n\nStarting...\n\n";
+}
+
+void endOfFileFormat(int TLB_Hit, int pageFault, ll count) {
+    cout << "\nFinished!\n\n"
+         << "-----------------------------------------------------------------------------------\n\n"
+         << "Statistics:\n\nTranslated addresses: " << count << endl << "Page fault rate: " << pageFault * 100.0 / 3000
+         << "%\n"
+         << "TLB hit rate: " << TLB_Hit * 100.0 / 3000 << "%\n\n" <<
+         "-----------------------------------------------------------------------------------";
+}
+
+void AddressesAndValueOutputFormat(ll virtualAddress, ll physicalAddress, int value) {
+    cout << "Virtual address: " << virtualAddress << "\t\tPhysical address: " << physicalAddress << "\t\tValue: "
+         << value << endl;
 }
 
 void RAMInit() {
@@ -88,7 +133,6 @@ void RAMInit() {
 }
 
 int TLBSearch(int virtPageNum) {
-
     for (int i = 0; i < TLB_SIZE; i++) {
         if (TLB[i].first == virtPageNum) {
             TLB_Hit++;
@@ -99,32 +143,30 @@ int TLBSearch(int virtPageNum) {
 }
 
 int readFromDisk(int pageNum, int pageOffset) {
-
     ifstream file;
-    file.open(fileName, ios::binary | ios::in); 
+    file.open(fileName, ios::binary | ios::in);
     if (!file.is_open()) {
         cout << "Failed to open the file" << endl;
         return -1;
     }
-        
+
     int val;
     vector<int> page;
 
     for (int i = 0; i < 256; i++) {
-        file.seekg(pageNum * PAGE_SIZE+ i, ios::beg);
-        file.read((char *)&val, sizeof(char));
+        file.seekg(pageNum * PAGE_SIZE + i, ios::beg);
+        file.read((char *) &val, sizeof(char));
         page.push_back(val);
-        if(page[i] > 127){
+        if (page[i] > 127) {
             page[i] = toSignedConversion(page[i]);
         }
     }
 
-        allocateInPageTable(page, pageNum);
-        return RAMPageCounter++;
+    allocateInPageTable(page, pageNum);
+    return RAMPageCounter++;
 }
 
 void allocateInPageTable(vector<int> page, int virtPageNum) {
-
     RAM[RAMPageCounter] = page;
     pageTable[virtPageNum] = RAMPageCounter;
 }
@@ -144,7 +186,7 @@ void FIFO(int virtPageNum, int physicalPageNum) {
     TLB.push_back(make_pair(virtPageNum, physicalPageNum));
 }
 
-int toSignedConversion (int value) {
+int toSignedConversion(int value) {
     string valueBin = "";
 
     for (int i = 0; i < 8; i++) {
@@ -154,11 +196,10 @@ int toSignedConversion (int value) {
 
     int carry = 1;
     for (int i = 0; i < 8; i++) {
-        if(carry && valueBin[i] == '1'){
+        if (carry && valueBin[i] == '1') {
             carry = 0;
-        }
-        else if(!carry) {
-            valueBin[i] = (valueBin[i] == '1'? '0' : '1');
+        } else if (!carry) {
+            valueBin[i] = (valueBin[i] == '1' ? '0' : '1');
         }
     }
 
@@ -167,5 +208,5 @@ int toSignedConversion (int value) {
         value += (valueBin[i] == '1') * (1 << i);
     }
 
-    return -1*value;
+    return -1 * value;
 }
