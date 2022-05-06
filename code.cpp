@@ -43,13 +43,13 @@ int RAMPageCounter;
 
 deque <pair<int, int>> TLB(TLB_SIZE, make_pair(-1, -1));
 vector<int> pageTable(PAGE_COUNT, -1);
-vector <vector<int>> RAM(FRAME_ENTRIES); //mapsize
-
+vector <vector<int>> RAM(FRAME_ENTRIES); 
 
 void RAMInit();
 int TLBSearch(int virtPageNum);
 int readFromDisk(int pageNum, int pageOffset);
-void allocateNewPage(vector<int> page, int virtPageNum);
+void allocateInPageTable(vector<int> page, int virtPageNum);
+void allocateInTLB(int virtPageNum, int physicalPageNum);
 void FIFO(int virtPageNum, int physicalPageNum);
 
 
@@ -72,9 +72,10 @@ int main() {
             if (physicalPageNum == -1) {
                 pageFault++;
                 physicalPageNum = readFromDisk(virtPageNum, pageOffset);
-            }
-                          
-            FIFO(virtPageNum, physicalPageNum);            
+            }                          
+            else{
+                allocateInTLB(virtPageNum, physicalPageNum);   
+            }         
         }
 
         value = RAM[physicalPageNum][pageOffset];
@@ -83,8 +84,6 @@ int main() {
     
     cout << TLB_Hit* 100.0/3000  << "%" << endl << pageFault*100.0/3000 << "%" << endl;
 }
-
-
 
 void RAMInit(){
     for(int i = 0; i < FRAME_ENTRIES; i++){
@@ -105,34 +104,37 @@ int TLBSearch(int virtPageNum) {
 }
 
 int readFromDisk(int pageNum, int pageOffset) {
-//
+
 //    fp = fopen(fileName, "rb");
 //    if (fp == NULL) {
 //        cout << "Failed to open the file" << endl;
 //        return 1;
 //    }
-//    int p;
+//    auto p = malloc(256);
 //    auto *value = &p;
 //    int idk = fseek(fp, pageNum * PAGE_SIZE + pageOffset, SEEK_SET);
 //    fread(value, 256, 1, fp);
-//
-//    return *value;
+
     vector<int> v (256, 0);
-    allocateNewPage(v, pageNum);
+    allocateInPageTable(v, pageNum);
     return RAMPageCounter++;
 }
 
-void allocateNewPage(vector<int> page, int virtPageNum){
+void allocateInPageTable(vector<int> page, int virtPageNum){
     
     RAM[RAMPageCounter] = page;
     pageTable[virtPageNum] = RAMPageCounter;
+    allocateInTLB(virtPageNum, RAMPageCounter);
+}
 
+void allocateInTLB(int virtPageNum, int physicalPageNum){
     for(int i = 0; i < TLB_SIZE; i++){
         if (TLB[i] == make_pair(-1, -1)) {
-            TLB[i] = make_pair(virtPageNum, RAMPageCounter);
+            TLB[i] = make_pair(virtPageNum, physicalPageNum);
             return;
         }
     }
+    FIFO(virtPageNum, physicalPageNum); 
 }
 
 void FIFO(int virtPageNum, int physicalPageNum){
