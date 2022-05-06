@@ -37,84 +37,74 @@ char fileName[] = "disk_sim";
 
 FILE *fp;
 
-int TLB_Hit, TLB_Miss, pageFault;
+int TLB_Hit, pageFault;
 
-vector <pair<int, int>> TLB(TLB_SIZE, make_pair(-1, -1));
+int RAMPageCounter;
+
+deque <pair<int, int>> TLB(TLB_SIZE, make_pair(-1, -1));
 vector<int> pageTable(PAGE_COUNT, -1);
-vector <map<int, int>> RAM(FRAME_ENTRIES); //mapsize
+vector <vector<int>> RAM(FRAME_ENTRIES); //mapsize
 
 
-//int readFromDisk(int pageNum, int pageOffset);
-
-pair<int, int> getVirtPageNumAndPageOffset(ll virtAddress);
-
+void RAMInit();
 int TLBSearch(int virtPageNum);
+int readFromDisk(int pageNum, int pageOffset);
+void allocateNewPage(vector<int> page, int virtPageNum);
+void FIFO(int virtPageNum, int physicalPageNum);
 
 
 int main() {
 
-    //input
+    RAMInit();
 
-//    cout << readFromDisk(118, 130) << endl;
+    ll virtualAddress;
+    while(cin >> virtualAddress){
 
-    ll virtualAddress=30338;
-    auto virtPageInfo = getVirtPageNumAndPageOffset(virtualAddress);
-    int virtPageNum =  virtPageInfo.first, pageOffset = virtPageInfo.second;
+        int virtPageNum = virtualAddress/PAGE_SIZE, pageOffset = virtualAddress%PAGE_SIZE;
 
-    int physicalAddress, value;
+        int value;
 
-    int physicalPageNum = TLBSearch(virtPageNum);
-
-    if (physicalPageNum == -1) {
-        physicalPageNum = pageTable[virtPageNum];
+        int physicalPageNum = TLBSearch(virtPageNum);
 
         if (physicalPageNum == -1) {
-            pageFault++;
-            //read from disk
-            //continue;
+            physicalPageNum = pageTable[virtPageNum];
+
+            if (physicalPageNum == -1) {
+                pageFault++;
+                physicalPageNum = readFromDisk(virtPageNum, pageOffset);
+            }
+                          
+            FIFO(virtPageNum, physicalPageNum);            
         }
 
-    }
+        value = RAM[physicalPageNum][pageOffset];
 
-    value = RAM[physicalPageNum][pageOffset];
+    }
+    
+    cout << TLB_Hit* 100.0/3000  << "%" << endl << pageFault*100.0/3000 << "%" << endl;
 }
 
 
-pair<int, int> getVirtPageNumAndPageOffset(ll virtAddress) {
-    string virtAddressBin = "";
 
-    for (int i = 0; i < 16; i++) {
-        if (1 << i & virtAddress) virtAddressBin += "1";
-        else virtAddressBin += "0";
+void RAMInit(){
+    for(int i = 0; i < FRAME_ENTRIES; i++){
+        RAM[i].resize(FRAME_SIZE, -1);
     }
-
-    string pageOffsetBin = virtAddressBin.substr(0, 8), virtPageNumBin = virtAddressBin.substr(8, 8);
-
-    int virtPageNumInt = 0, pageOffsetInt = 0;
-
-    for (int i = 0; i < 8; i++) {
-        virtPageNumInt += (virtPageNumBin[i] == '1') * (1 << i);
-        pageOffsetInt += (pageOffsetBin[i] == '1') * (1 << i);
-    }
-
-    return make_pair(virtPageNumInt, pageOffsetInt);
 }
 
-
+ 
 int TLBSearch(int virtPageNum) {
 
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < TLB_SIZE; i++) {
         if (TLB[i].first == virtPageNum) {
             TLB_Hit++;
             return TLB[i].second;
         }
     }
-
-    TLB_Miss++;
     return -1;
 }
 
-//int readFromDisk(int pageNum, int pageOffset) {
+int readFromDisk(int pageNum, int pageOffset) {
 //
 //    fp = fopen(fileName, "rb");
 //    if (fp == NULL) {
@@ -127,4 +117,26 @@ int TLBSearch(int virtPageNum) {
 //    fread(value, 256, 1, fp);
 //
 //    return *value;
-//}
+    vector<int> v (256, 0);
+    allocateNewPage(v, pageNum);
+    return RAMPageCounter++;
+}
+
+void allocateNewPage(vector<int> page, int virtPageNum){
+    
+    RAM[RAMPageCounter] = page;
+    pageTable[virtPageNum] = RAMPageCounter;
+
+    for(int i = 0; i < TLB_SIZE; i++){
+        if (TLB[i] == make_pair(-1, -1)) {
+            TLB[i] = make_pair(virtPageNum, RAMPageCounter);
+            return;
+        }
+    }
+}
+
+void FIFO(int virtPageNum, int physicalPageNum){
+    TLB.pop_front();
+    TLB.push_back(make_pair(virtPageNum, physicalPageNum));    
+}
+
