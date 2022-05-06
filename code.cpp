@@ -1,24 +1,8 @@
 #include <iostream>
-#include <iomanip>
-#include <cstdio>
 #include <fstream>
-#include <cmath>
-#include <algorithm>
 #include <string>
-#include <cstring>
 #include <vector>
-#include <set>
-#include <unordered_set>
-#include <map>
-#include <unordered_map>
-#include <stack>
-#include <queue>
 #include <deque>
-#include <bitset>
-#include <chrono>
-#include <functional>
-#include <numeric>
-#include <sstream>
 
 using namespace std;
 
@@ -33,14 +17,11 @@ using namespace std;
 
 typedef long long ll;
 
-char fileName[] = R"(\Users\Ayan Hashimova\CLionProjects\untitled\disk_sim)";
-char inputName[] = R"(\Users\Ayan Hashimova\CLionProjects\untitled\addresses.txt)";
+char fileName[] = R"(\Users\GH\source\repos\VirtualMemory\disk_sim)";
+char inputName[] = R"(\Users\GH\source\repos\VirtualMemory\addresses.txt)";
+char outputName[] = R"(\Users\GH\source\repos\VirtualMemory\output.txt)";
 
-FILE *fp;
-
-int TLB_Hit, pageFault;
-
-int RAMPageCounter;
+int TLB_Hit, pageFault, RAMPageCounter;
 
 deque<pair<int, int>> TLB(TLB_SIZE, make_pair(-1, -1));
 vector<int> pageTable(PAGE_COUNT, -1);
@@ -58,19 +39,20 @@ void allocateInTLB(int virtPageNum, int physicalPageNum);
 
 void FIFO(int virtPageNum, int physicalPageNum);
 
+int toSignedConversion (int value);
+
 
 int main() {
 
     RAMInit();
 
     freopen(inputName, "r", stdin);
+    freopen(outputName, "w", stdout);
 
     ll virtualAddress;
-    while (cin >> virtualAddress) {
+    while (cin >> virtualAddress){
 
         int virtPageNum = virtualAddress / PAGE_SIZE, pageOffset = virtualAddress % PAGE_SIZE;
-
-        int value;
 
         int physicalPageNum = TLBSearch(virtPageNum);
 
@@ -80,14 +62,20 @@ int main() {
             if (physicalPageNum == -1) {
                 pageFault++;
                 physicalPageNum = readFromDisk(virtPageNum, pageOffset);
-            } else {
-                allocateInTLB(virtPageNum, physicalPageNum);
-            }
+
+                //if file failed to open
+                if (physicalPageNum == -1){
+                    return 0;
+                }
+            } 
+
+            allocateInTLB(virtPageNum, physicalPageNum);
         }
 
-        value = RAM[physicalPageNum][pageOffset];
+        int physicalAddress = physicalPageNum * FRAME_SIZE + pageOffset;
+        int value = RAM[physicalPageNum][pageOffset];
 
-        cout << value << endl;
+        cout << virtualAddress << " " << physicalAddress << " " << value << endl;
     }
 
     cout << TLB_Hit * 100.0 / 3000 << "%" << endl << pageFault * 100.0 / 3000 << "%" << endl;
@@ -112,35 +100,33 @@ int TLBSearch(int virtPageNum) {
 
 int readFromDisk(int pageNum, int pageOffset) {
 
-    fp = fopen(fileName, "rb");
-
-    if (fp == NULL) {
+    ifstream file;
+    file.open(fileName, ios::binary | ios::in); 
+    if (!file.is_open()) {
         cout << "Failed to open the file" << endl;
-        return 1;
+        return -1;
+    }
+        
+    int val;
+    vector<int> page;
+
+    for (int i = 0; i < 256; i++) {
+        file.seekg(pageNum * PAGE_SIZE+ i, ios::beg);
+        file.read((char *)&val, sizeof(char));
+        page.push_back(val);
+        if(page[i] > 127){
+            page[i] = toSignedConversion(page[i]);
+        }
     }
 
-    fseek(fp, pageNum * PAGE_SIZE + pageOffset, SEEK_SET);
-
-    int *val = (int *) malloc(1);
-    fread(val, 1, 1, fp);
-
-    return *val;
-//    vector<int> page;
-//    for (int i = 0; i < 256; i++) {
-//        int *val = (int *) malloc(1);
-//        fread(val, 1, 1, fp);
-//        page.push_back(*val);
-//    }
-//
-//    allocateInPageTable(page, pageNum);
-//    return RAMPageCounter++;
+        allocateInPageTable(page, pageNum);
+        return RAMPageCounter++;
 }
 
 void allocateInPageTable(vector<int> page, int virtPageNum) {
 
     RAM[RAMPageCounter] = page;
     pageTable[virtPageNum] = RAMPageCounter;
-    allocateInTLB(virtPageNum, RAMPageCounter);
 }
 
 void allocateInTLB(int virtPageNum, int physicalPageNum) {
@@ -158,3 +144,28 @@ void FIFO(int virtPageNum, int physicalPageNum) {
     TLB.push_back(make_pair(virtPageNum, physicalPageNum));
 }
 
+int toSignedConversion (int value) {
+    string valueBin = "";
+
+    for (int i = 0; i < 8; i++) {
+        if (1 << i & value) valueBin += "1";
+        else valueBin += "0";
+    }
+
+    int carry = 1;
+    for (int i = 0; i < 8; i++) {
+        if(carry && valueBin[i] == '1'){
+            carry = 0;
+        }
+        else if(!carry) {
+            valueBin[i] = (valueBin[i] == '1'? '0' : '1');
+        }
+    }
+
+    value = 0;
+    for (int i = 0; i < 8; i++) {
+        value += (valueBin[i] == '1') * (1 << i);
+    }
+
+    return -1*value;
+}
