@@ -18,9 +18,9 @@ using namespace std;
 
 typedef long long ll;
 
-char fileName[] = R"(\Users\Ayan Hashimova\CLionProjects\VirtualMemoryManager\disk_sim)";
-char inputName[] = R"(\Users\Ayan Hashimova\CLionProjects\VirtualMemoryManager\addresses.txt)";
-char outputName[] = R"(\Users\Ayan Hashimova\CLionProjects\VirtualMemoryManager\output.txt)";
+char fileName[] = "disk_sim";
+char inputName[] = "addresses.txt";
+char outputName[] = "output.txt";
 
 int TLB_Hit, pageFault, RAMPageCounter;
 
@@ -29,24 +29,16 @@ vector<int> pageTable(PAGE_COUNT, -1);
 vector<vector<int>> RAM(FRAME_ENTRIES);
 
 void RAMInit();
-
 int TLBSearch(int virtPageNum);
-
 int readFromDisk(int pageNum, int pageOffset);
-
 void allocateInPageTable(vector<int> page, int virtPageNum);
-
 void allocateInTLB(int virtPageNum, int physicalPageNum);
-
 void FIFO(int virtPageNum, int physicalPageNum);
-
 int toSignedConversion(int value);
-
 void AddressesAndValueOutputFormat(ll virtualAddress, ll physicalAddress, int value);
-
 void startOfFileFormat(string replacementAlgorithm);
-
 void endOfFileFormat(int TLB_Hit, int pageFault, ll count);
+
 
 int main() {
 
@@ -101,6 +93,8 @@ int main() {
     }
 
     endOfFileFormat(TLB_Hit, pageFault, count);
+    fclose(input);
+    fclose(output);
 }
 
 void startOfFileFormat(string replacementAlgorithm) {
