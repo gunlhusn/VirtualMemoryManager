@@ -25,9 +25,17 @@ char outputName[] = "output.txt";
 int TLB_Hit, pageFault, RAMPageCounter;
 string replacementAlgorithm;
 
+class entryRAM{
+    public:
+
+    vector<int> frame;
+    int R;
+    int pageTableEntry;
+};
+
 deque<pair<int, int>> TLB(TLB_SIZE, make_pair(-1, -1));
 vector<int> pageTable(PAGE_COUNT, -1);
-vector<vector<int>> RAM(FRAME_ENTRIES);
+vector<entryRAM> RAM(FRAME_ENTRIES);
 
 void RAMInit();
 int TLBSearch(int virtPageNum);
@@ -39,13 +47,14 @@ int toSignedConversion(int value);
 void AddressesAndValueOutputFormat(ll virtualAddress, ll physicalAddress, int value);
 void startOfFileFormat(string replacementAlgorithm);
 void endOfFileFormat(int TLB_Hit, int pageFault, ll count);
+void clockAlgorithm();
 
 
 int main() {
 
     cout << "Enter replacement algorithm: ";
     cin >> replacementAlgorithm;
-
+    
     transform(replacementAlgorithm.begin(), replacementAlgorithm.end(), replacementAlgorithm.begin(), ::toupper);
     if (replacementAlgorithm != "FIFO" && replacementAlgorithm != "LRU") {
         return -1;
@@ -80,14 +89,16 @@ int main() {
 
             if (physicalPageNum == -1) {
                 pageFault++;
-                physicalPageNum = readFromDisk(virtPageNum, pageOffset);
-            }
+                physicalPageNum = readFromDisk(virtPageNum, pageOffset);                
+                RAMPageCounter %= FRAME_ENTRIES;
+            }              
 
             allocateInTLB(virtPageNum, physicalPageNum);
         }
 
+        RAM[physicalPageNum].R = 1;
         int physicalAddress = physicalPageNum * FRAME_SIZE + pageOffset;
-        int value = RAM[physicalPageNum][pageOffset];
+        int value = RAM[physicalPageNum].frame[pageOffset];
 
         AddressesAndValueOutputFormat(virtualAddress, physicalAddress, value);
     }
@@ -99,8 +110,8 @@ int main() {
 
 void startOfFileFormat(string replacementAlgorithm) {
     cout << "Welcome to Team 1's Virtual Memory Simulator!\n\nSystem parameters:\n\n" <<
-         "Program address space: 16-bit\nPage size: 2^8 bytes\nTLB capacity: 16 entries\n" <<
-         "Number of frames: 256\nPhysical memory size: 64 KB\nReplacement algorithm: " << replacementAlgorithm << endl
+         "Program address space: 16-bit\nPage size: 2^8 bytes\nTLB capacity: " << TLB_SIZE <<" entries\n" <<
+         "Number of frames: " << FRAME_ENTRIES << "\nPhysical memory size: "<< PHYSICAL_MEMORY_SIZE <<" KB\nReplacement algorithm: " << replacementAlgorithm << endl
          << endl;
 
     cout << "----------------------------------------------------------------------------------\n\nStarting...\n\n";
@@ -122,7 +133,9 @@ void AddressesAndValueOutputFormat(ll virtualAddress, ll physicalAddress, int va
 
 void RAMInit() {
     for (int i = 0; i < FRAME_ENTRIES; i++) {
-        RAM[i].resize(FRAME_SIZE, -1);
+        RAM[i].frame.resize(FRAME_SIZE, -1);
+        RAM[i].R = 0;
+        RAM[i].pageTableEntry = -1;
     }
 }
 
@@ -166,8 +179,25 @@ int readFromDisk(int pageNum, int pageOffset) {
 }
 
 void allocateInPageTable(vector<int> page, int virtPageNum) {
-    RAM[RAMPageCounter] = page;
+    clockAlgorithm();
+    RAM[RAMPageCounter].frame = page;
+    RAM[RAMPageCounter].pageTableEntry = virtPageNum;
     pageTable[virtPageNum] = RAMPageCounter;
+}
+
+void clockAlgorithm(){
+    while(RAM[RAMPageCounter].R){
+        RAM[RAMPageCounter++].R = 0;
+        RAMPageCounter %= FRAME_ENTRIES;
+    }
+
+    for (int i = 0; i < TLB_SIZE; i++) {
+        if (TLB[i].first != -1 && TLB[i].first == RAM[RAMPageCounter].pageTableEntry) {
+            TLB[i] = make_pair(-1, -1);
+        }
+    }
+
+    pageTable[RAM[RAMPageCounter].pageTableEntry] = -1;
 }
 
 void allocateInTLB(int virtPageNum, int physicalPageNum) {
