@@ -13,7 +13,7 @@ using namespace std;
 #define TLB_SIZE 16 // Max TLB entries.
 #define FRAME_SIZE 256 // Frame size, in bytes.
 #define FRAME_ENTRIES 256 // Number of frames in physical memory.
-#define PHYSICAL_MEMORY_SIZE (FRAME_SIZE * FRAME_ENTRIES) // Mem size, in bytes.
+#define PHYSICAL_MEMORY_SIZE (FRAME_SIZE * FRAME_ENTRIES) / 1024 // Mem size, in KB.
 #define BUFFER_SIZE 256
 
 typedef long long ll;
