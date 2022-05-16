@@ -23,6 +23,7 @@ char inputName[] = "addresses.txt";
 char outputName[] = "output.txt";
 
 int TLB_Hit, pageFault, RAMPageCounter;
+string replacementAlgorithm;
 
 deque<pair<int, int>> TLB(TLB_SIZE, make_pair(-1, -1));
 vector<int> pageTable(PAGE_COUNT, -1);
@@ -33,7 +34,7 @@ int TLBSearch(int virtPageNum);
 int readFromDisk(int pageNum, int pageOffset);
 void allocateInPageTable(vector<int> page, int virtPageNum);
 void allocateInTLB(int virtPageNum, int physicalPageNum);
-void FIFO(int virtPageNum, int physicalPageNum);
+void updateTLB(int virtPageNum, int physicalPageNum);
 int toSignedConversion(int value);
 void AddressesAndValueOutputFormat(ll virtualAddress, ll physicalAddress, int value);
 void startOfFileFormat(string replacementAlgorithm);
@@ -42,7 +43,6 @@ void endOfFileFormat(int TLB_Hit, int pageFault, ll count);
 
 int main() {
 
-    string replacementAlgorithm;
     cout << "Enter replacement algorithm: ";
     cin >> replacementAlgorithm;
 
@@ -129,8 +129,13 @@ void RAMInit() {
 int TLBSearch(int virtPageNum) {
     for (int i = 0; i < TLB_SIZE; i++) {
         if (TLB[i].first == virtPageNum) {
+            auto TLBEntry = TLB[i];
+            if(replacementAlgorithm == "LRU"){
+                TLB.erase(TLB.begin() + i);
+                TLB.push_back(TLBEntry);
+            }
             TLB_Hit++;
-            return TLB[i].second;
+            return TLBEntry.second;
         }
     }
     return -1;
@@ -172,10 +177,10 @@ void allocateInTLB(int virtPageNum, int physicalPageNum) {
             return;
         }
     }
-    FIFO(virtPageNum, physicalPageNum);
+    updateTLB(virtPageNum, physicalPageNum);
 }
 
-void FIFO(int virtPageNum, int physicalPageNum) {
+void updateTLB(int virtPageNum, int physicalPageNum) {
     TLB.pop_front();
     TLB.push_back(make_pair(virtPageNum, physicalPageNum));
 }
