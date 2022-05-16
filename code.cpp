@@ -7,14 +7,14 @@
 
 using namespace std;
 
-#define PAGE_SIZE 256 // Page size, in bytes.
-#define PAGE_COUNT 256
-#define PAGE_NUM_BITS 8 // Page number size, in bits.
+#define PROGRAM_ADDRESS_SPACE 16
+#define PAGE_NUM_BITS 8 
+#define PAGE_SIZE (1 << PAGE_NUM_BITS) // Page size, in bytes.
+#define PAGE_COUNT (1 << (PROGRAM_ADDRESS_SPACE - PAGE_NUM_BITS))// Page number size, in bits.
 #define TLB_SIZE 16 // Max TLB entries.
 #define FRAME_SIZE 256 // Frame size, in bytes.
 #define FRAME_ENTRIES 256 // Number of frames in physical memory.
 #define PHYSICAL_MEMORY_SIZE (FRAME_SIZE * FRAME_ENTRIES) / 1024 // Mem size, in KB.
-#define BUFFER_SIZE 256
 
 typedef long long ll;
 
@@ -24,6 +24,7 @@ char outputName[] = "output.txt";
 
 int TLB_Hit, pageFault, RAMPageCounter;
 string replacementAlgorithm;
+ifstream disk;
 
 class entryRAM{
     public:
@@ -74,6 +75,12 @@ int main() {
         return -1;
     }
 
+    disk.open(fileName, ios::binary | ios::in);
+    if (!disk.is_open()) {
+        cout << "Failed to open the file" << endl;
+        return -1;
+    }
+
     startOfFileFormat(replacementAlgorithm);
 
     ll virtualAddress, count = 0;
@@ -106,29 +113,7 @@ int main() {
     endOfFileFormat(TLB_Hit, pageFault, count);
     fclose(input);
     fclose(output);
-}
-
-void startOfFileFormat(string replacementAlgorithm) {
-    cout << "Welcome to Team 1's Virtual Memory Simulator!\n\nSystem parameters:\n\n" <<
-         "Program address space: 16-bit\nPage size: 2^8 bytes\nTLB capacity: " << TLB_SIZE <<" entries\n" <<
-         "Number of frames: " << FRAME_ENTRIES << "\nPhysical memory size: "<< PHYSICAL_MEMORY_SIZE <<" KB\nReplacement algorithm: " << replacementAlgorithm << endl
-         << endl;
-
-    cout << "----------------------------------------------------------------------------------\n\nStarting...\n\n";
-}
-
-void endOfFileFormat(int TLB_Hit, int pageFault, ll count) {
-    cout << "\nFinished!\n\n"
-         << "-----------------------------------------------------------------------------------\n\n"
-         << "Statistics:\n\nTranslated addresses: " << count << endl << "Page fault rate: " << pageFault * 100.0 / 3000
-         << "%\n"
-         << "TLB hit rate: " << TLB_Hit * 100.0 / 3000 << "%\n\n" <<
-         "-----------------------------------------------------------------------------------";
-}
-
-void AddressesAndValueOutputFormat(ll virtualAddress, ll physicalAddress, int value) {
-    cout << "Virtual address: " << virtualAddress << "\t\tPhysical address: " << physicalAddress << "\t\tValue: "
-         << value << endl;
+    disk.close();
 }
 
 void RAMInit() {
@@ -155,19 +140,13 @@ int TLBSearch(int virtPageNum) {
 }
 
 int readFromDisk(int pageNum, int pageOffset) {
-    ifstream file;
-    file.open(fileName, ios::binary | ios::in);
-    if (!file.is_open()) {
-        cout << "Failed to open the file" << endl;
-        return -1;
-    }
-
+    
     int val;
     vector<int> page;
 
     for (int i = 0; i < 256; i++) {
-        file.seekg(pageNum * PAGE_SIZE + i, ios::beg);
-        file.read((char *) &val, sizeof(char));
+        disk.seekg(pageNum * PAGE_SIZE + i, ios::beg);
+        disk.read((char *) &val, sizeof(char));
         page.push_back(val);
         if (page[i] > 127) {
             page[i] = toSignedConversion(page[i]);
@@ -238,4 +217,27 @@ int toSignedConversion(int value) {
     }
 
     return -1 * value;
+}
+
+void startOfFileFormat(string replacementAlgorithm) {
+    cout << "Welcome to Team 1's Virtual Memory Simulator!\n\nSystem parameters:\n\n" <<
+         "Program address space: " << PROGRAM_ADDRESS_SPACE <<"-bit\nPage size: 2^"<< PAGE_NUM_BITS <<" bytes\nTLB capacity: " << TLB_SIZE <<" entries\n" <<
+         "Number of frames: " << FRAME_ENTRIES << "\nPhysical memory size: "<< PHYSICAL_MEMORY_SIZE <<" KB\nReplacement algorithm: " << replacementAlgorithm << endl
+         << endl;
+
+    cout << "----------------------------------------------------------------------------------\n\nStarting...\n\n";
+}
+
+void endOfFileFormat(int TLB_Hit, int pageFault, ll count) {
+    cout << "\nFinished!\n\n"
+         << "-----------------------------------------------------------------------------------\n\n"
+         << "Statistics:\n\nTranslated addresses: " << count << endl << "Page fault rate: " << pageFault * 100.0 / 3000
+         << "%\n"
+         << "TLB hit rate: " << TLB_Hit * 100.0 / 3000 << "%\n\n" <<
+         "-----------------------------------------------------------------------------------";
+}
+
+void AddressesAndValueOutputFormat(ll virtualAddress, ll physicalAddress, int value) {
+    cout << "Virtual address: " << virtualAddress << "\t\tPhysical address: " << physicalAddress << "\t\tValue: "
+         << value << endl;
 }
