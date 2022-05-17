@@ -262,8 +262,8 @@ void addressesAndValueOutputFormat(ll virtualAddress, ll physicalAddress, int va
 void endOfFileFormat(int TLB_Hit, int pageFault, ll count) {
     cout << "\nFinished!\n\n"
          << "-----------------------------------------------------------------------------------\n\n"
-         << "Statistics:\n\nTranslated addresses: " << count << endl << "Page fault rate: " << pageFault * 100.0 / 3000
+         << "Statistics:\n\nTranslated addresses: " << count << endl << "Page fault rate: " << pageFault * 100.0 / count
          << "%\n"
-         << "TLB hit rate: " << TLB_Hit * 100.0 / 3000 << "%\n\n" <<
+         << "TLB hit rate: " << TLB_Hit * 100.0 / count << "%\n\n" <<
          "-----------------------------------------------------------------------------------";
 }
