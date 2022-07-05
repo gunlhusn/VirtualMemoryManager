@@ -11,11 +11,10 @@ using namespace std;
 #define PAGE_NUM_BITS 8
 #define PAGE_SIZE (1 << PAGE_NUM_BITS)
 #define PAGE_COUNT (1 << (PROGRAM_ADDRESS_SPACE - PAGE_NUM_BITS))
-#define TLB_SIZE 16
-#define FRAME_SIZE 256
 #define FRAME_ENTRIES 256
-#define PHYSICAL_MEMORY_SIZE (FRAME_SIZE * FRAME_ENTRIES) / 1024 // Memory size, in KB.
-#define VALUE_BITS 8
+#define PHYSICAL_MEMORY_SIZE (PAGE_SIZE * FRAME_ENTRIES) / 1024 // Memory size, in KB.
+#define TLB_SIZE 16
+#define VALUE_BITS 8 // size of values read from disk
 
 typedef long long ll;
 
@@ -106,7 +105,7 @@ int main() {
         }
         //set r bit of this page entry (most recently used entry) to 1
         RAM[physicalPageNumber].R = 1;
-        int physicalAddress = physicalPageNumber * FRAME_SIZE + pageOffset;
+        int physicalAddress = physicalPageNumber * PAGE_SIZE + pageOffset;
         int value = RAM[physicalPageNumber].frame[pageOffset];
 
         addressesAndValueOutputFormat(virtualAddress, physicalAddress, value);
@@ -121,7 +120,7 @@ int main() {
 void RAM_Init() {
     //initialize RAM
     for (int i = 0; i < FRAME_ENTRIES; i++) {
-        RAM[i].frame.resize(FRAME_SIZE, -1);
+        RAM[i].frame.resize(PAGE_SIZE, -1);
         RAM[i].R = 0;
         RAM[i].pageTableEntry = -1;
     }
@@ -151,7 +150,7 @@ int readFromDisk(int pageNumber) {
     int val;
     vector<int> page;
 
-    for (int i = 0; i < 256; i++) {
+    for (int i = 0; i < PAGE_SIZE; i++) {
         //set the position of the stream to the address at specified page number
         disk.seekg(pageNumber * PAGE_SIZE + i, ios::beg);
         //read the entries in the page one by one
