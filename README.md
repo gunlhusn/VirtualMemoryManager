@@ -1,7 +1,7 @@
 # Virtual Memory Manager
 
 <h3> This repository implements a simulated virtual memory manager 
-    and by accomplishing the following:</h3>
+    by accomplishing the following:</h3>
 
 - Implement TLB and Page Table structures
 - Using the above, map virtual addresses to physical ones
